@@ -7,11 +7,13 @@ interface Props {
   column: Column;
   onAddCard: (columnId: number, title: string) => void;
   onCardClick: (card: Card) => void;
+  onClearColumn: (columnId: number) => void;
 }
 
-export function KanbanColumn({ column, onAddCard, onCardClick }: Props) {
+export function KanbanColumn({ column, onAddCard, onCardClick, onClearColumn }: Props) {
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const handleAdd = () => {
     if (!newTitle.trim()) return;
@@ -25,8 +27,42 @@ export function KanbanColumn({ column, onAddCard, onCardClick }: Props) {
       {/* Column header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
         <h2 className="text-sm font-semibold text-[#172b4d]">{column.name}</h2>
-        <span className="text-xs text-[#5e6c84] font-medium">{column.cards.length}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-[#5e6c84] font-medium">{column.cards.length}</span>
+          {column.cards.length > 0 && (
+            <button
+              onClick={() => setConfirmClear(true)}
+              className="text-[#5e6c84] hover:text-red-600 text-xs p-0.5 rounded transition-colors"
+              title="Clear all cards"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Clear confirmation dialog */}
+      {confirmClear && (
+        <div className="mx-2 mb-2 p-3 bg-white rounded-lg border border-red-200 shadow-sm">
+          <p className="text-sm text-[#172b4d] mb-2">
+            Delete all <strong>{column.cards.length}</strong> card{column.cards.length !== 1 ? "s" : ""} in <strong>{column.name}</strong>?
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { onClearColumn(column.id); setConfirmClear(false); }}
+              className="bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded px-3 py-1.5 transition-colors"
+            >
+              Yes, delete all
+            </button>
+            <button
+              onClick={() => setConfirmClear(false)}
+              className="text-gray-500 hover:text-gray-700 text-xs font-medium rounded px-3 py-1.5 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Cards area */}
       <Droppable droppableId={String(column.id)}>

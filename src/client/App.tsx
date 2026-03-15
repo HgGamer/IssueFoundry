@@ -108,6 +108,15 @@ export default function App() {
     setBoard(full);
   };
 
+  const handleClearColumn = async (columnId: number) => {
+    if (!board) return;
+    const col = board.columns.find((c) => c.id === columnId);
+    if (!col) return;
+    await Promise.all(col.cards.map((card) => api.deleteCard(card.id)));
+    const full = await api.getBoardFull(board.id);
+    setBoard(full);
+  };
+
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination || !board) return;
 
@@ -136,16 +145,22 @@ export default function App() {
       {/* Navbar — warm charcoal */}
       <header className="bg-[#1c1917] px-4 py-2 flex items-center gap-3 shadow-md flex-shrink-0">
         <div className="flex items-center gap-2">
-          {/* Forge hammer + spark logo */}
+          {/* Anvil logo */}
           <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-            {/* Hammer head */}
-            <rect x="9" y="3" width="10" height="5" rx="1" fill="#f59e0b" transform="rotate(15 14 5.5)" />
-            {/* Handle */}
-            <rect x="4" y="10" width="3" height="12" rx="1" fill="#d97706" transform="rotate(-30 5.5 16)" />
-            {/* Sparks */}
-            <circle cx="19" cy="4" r="1" fill="#fbbf24" />
-            <circle cx="21" cy="7" r="0.7" fill="#fcd34d" />
-            <circle cx="17" cy="2" r="0.7" fill="#fcd34d" />
+            {/* Anvil body */}
+            <path d="M2 14h20l-2 4H4l-2-4z" fill="#f59e0b" />
+            {/* Anvil top / working surface */}
+            <path d="M5 10h14c1 0 2 1 2 2v2H3v-2c0-1 1-2 2-2z" fill="#d97706" />
+            {/* Horn (left taper) */}
+            <path d="M5 10L1 12H3v-2z" fill="#b45309" />
+            {/* Heel step (right block) */}
+            <rect x="17" y="8" width="4" height="4" rx="0.5" fill="#d97706" />
+            {/* Base feet */}
+            <rect x="5" y="18" width="4" height="2" rx="0.5" fill="#92400e" />
+            <rect x="15" y="18" width="4" height="2" rx="0.5" fill="#92400e" />
+            {/* Spark */}
+            <circle cx="19" cy="5" r="1" fill="#fbbf24" />
+            <circle cx="16" cy="3" r="0.7" fill="#fcd34d" />
           </svg>
           <h1 className="text-white font-bold text-lg tracking-tight">IssueFoundry</h1>
         </div>
@@ -238,6 +253,7 @@ export default function App() {
                     column={col}
                     onAddCard={handleAddCard}
                     onCardClick={setSelectedCard}
+                    onClearColumn={handleClearColumn}
                   />
                 ))}
 

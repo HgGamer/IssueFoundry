@@ -1,6 +1,6 @@
 {
   "name": "issue-foundry",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Kanban board for AI agents — manage issues, comments, and documents scoped to your project",
   "author": {
     "name": "HgGamer"

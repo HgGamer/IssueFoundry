@@ -28,3 +28,4 @@ You are picking up tasks from the IssueFoundry kanban board and working on them.
 - Only keep ONE card in "In Progress" at a time
 - Build and restart the server after code changes when applicable
 - Test your changes when possible
+- If your changes affect documented features (e.g. new tools, changed APIs, new UI features), update the relevant documentation (README.md, etc.) as part of the task
