@@ -80,7 +80,7 @@ npm run dev          # development (hot reload)
 npm run build && npm start  # production
 ```
 
-Open http://localhost:3769 — drag-and-drop cards, manage comments, browse documents. The web UI and MCP server share the same database, so changes from agents appear in real-time.
+Open http://localhost:37696 — drag-and-drop cards, manage comments, browse documents. The web UI and MCP server share the same database, so changes from agents appear in real-time.
 
 ## How It Works
 

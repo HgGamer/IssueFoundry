@@ -3,3 +3,8 @@
 if [ ! -d "${CLAUDE_PLUGIN_ROOT}/node_modules" ]; then
   cd "${CLAUDE_PLUGIN_ROOT}" && npm install --production 2>/dev/null
 fi
+
+# Start the web UI if not already running
+if ! lsof -iTCP:37696 -sTCP:LISTEN >/dev/null 2>&1; then
+  cd "${CLAUDE_PLUGIN_ROOT}" && nohup node dist/server/server.js >/dev/null 2>&1 &
+fi

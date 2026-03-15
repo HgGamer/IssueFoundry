@@ -12,7 +12,7 @@ app.use("/api/columns", columnsRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/comments", commentsRouter);
 app.use("/api/documents", documentsRouter);
-const PORT = parseInt(process.env.PORT || "3001");
+const PORT = parseInt(process.env.PORT || "37696");
 ViteExpress.listen(app, PORT, () => {
     console.log(`IssueFoundry web UI running at http://localhost:${PORT}`);
 });
