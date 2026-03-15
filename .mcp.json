@@ -3,7 +3,7 @@
     "issue-foundry": {
       "type": "stdio",
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/server/index.js"]
+      "args": ["./dist/server/index.js"]
     }
   }
 }

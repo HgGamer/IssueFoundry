@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../db.js";
+import { broadcast } from "../events.js";
 
 export const cardsRouter = Router();
 
@@ -17,6 +18,7 @@ cardsRouter.post("/", (req, res) => {
     "INSERT INTO cards (column_id, title, description, position, labels) VALUES (?, ?, ?, ?, ?)"
   ).run(column_id, title, description, position, JSON.stringify(labels));
   const card = db.prepare("SELECT * FROM cards WHERE id = ?").get(info.lastInsertRowid);
+  broadcast("board-updated");
   res.status(201).json(card);
 });
 
@@ -40,6 +42,7 @@ cardsRouter.patch("/:id", (req, res) => {
     db.prepare(`UPDATE cards SET ${updates.join(", ")} WHERE id = ?`).run(...values);
   }
   const card = db.prepare("SELECT * FROM cards WHERE id = ?").get(req.params.id);
+  broadcast("board-updated");
   res.json(card);
 });
 
@@ -77,6 +80,7 @@ cardsRouter.post("/:id/move", (req, res) => {
   })();
 
   const updated = db.prepare("SELECT * FROM cards WHERE id = ?").get(req.params.id);
+  broadcast("board-updated");
   res.json(updated);
 });
 
@@ -88,5 +92,6 @@ cardsRouter.delete("/:id", (req, res) => {
     db.prepare("UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?")
       .run(card.column_id, card.position);
   })();
+  broadcast("board-updated");
   res.json({ ok: true });
 });

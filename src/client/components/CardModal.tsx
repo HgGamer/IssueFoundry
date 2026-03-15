@@ -45,66 +45,110 @@ export function CardModal({ card, columns, onClose, onUpdate }: Props) {
   const col = columns.find((c) => c.id === card.column_id);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-start justify-center pt-20 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-12 z-50" onClick={onClose}>
       <div
-        className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto"
+        className="bg-[#f4f5f7] rounded-xl w-full max-w-2xl mx-4 max-h-[85vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-5 space-y-4">
-          {/* Column badge */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">{col?.name}</span>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg">&times;</button>
+        {/* Header */}
+        <div className="px-6 pt-5 pb-3 flex items-start gap-3">
+          <svg className="w-5 h-5 text-[#42526e] mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M7 7h10M7 12h10M7 17h4" />
+          </svg>
+          <div className="flex-1">
+            <input
+              className="w-full bg-transparent text-xl font-semibold text-[#172b4d] focus:outline-none focus:bg-white focus:border focus:border-amber-500 rounded px-2 py-1 -ml-2"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={handleSave}
+            />
+            <p className="text-sm text-[#5e6c84] mt-0.5 ml-0.5">
+              in list <span className="underline">{col?.name}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[#42526e] hover:bg-[#dfe1e6] rounded-full w-8 h-8 flex items-center justify-center text-lg transition-colors"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="px-6 pb-6 space-y-6">
+          {/* Description */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-5 h-5 text-[#42526e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+              <h3 className="text-base font-semibold text-[#172b4d]">Description</h3>
+            </div>
+            <textarea
+              className="w-full bg-white border border-[#dfe1e6] rounded-lg p-3 text-sm text-[#172b4d] resize-none focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-[#a5adba] min-h-[100px]"
+              placeholder="Add a more detailed description..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={handleSave}
+            />
           </div>
 
-          {/* Title */}
-          <input
-            className="w-full bg-transparent text-lg font-semibold focus:outline-none border-b border-transparent focus:border-gray-700 pb-1"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleSave}
-          />
-
-          {/* Description */}
-          <textarea
-            className="w-full bg-gray-800/50 rounded-lg p-3 text-sm resize-none focus:outline-none placeholder-gray-600 min-h-[80px]"
-            placeholder="Add a description..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={handleSave}
-          />
-
-          {/* Comments */}
+          {/* Activity / Comments */}
           <div>
-            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Comments</h3>
-            <div className="space-y-2 mb-3">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-5 h-5 text-[#42526e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <h3 className="text-base font-semibold text-[#172b4d]">Activity</h3>
+            </div>
+
+            {/* Add comment */}
+            <div className="flex gap-3 mb-4">
+              <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                U
+              </div>
+              <div className="flex-1">
+                <input
+                  className="w-full bg-white border border-[#dfe1e6] rounded-lg px-3 py-2 text-sm text-[#172b4d] placeholder-[#a5adba] focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="Write a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
+                />
+              </div>
+            </div>
+
+            {/* Comment list */}
+            <div className="space-y-3">
               {comments.map((c) => (
-                <div key={c.id} className="bg-gray-800/50 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs font-medium ${c.author === "agent" ? "text-purple-400" : "text-blue-400"}`}>
-                      {c.author}
-                    </span>
-                    <span className="text-[10px] text-gray-600">{c.created_at}</span>
+                <div key={c.id} className="flex gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
+                    c.author === "agent" ? "bg-purple-600" : "bg-amber-600"
+                  }`}>
+                    {c.author === "agent" ? "A" : "U"}
                   </div>
-                  <p className="text-sm text-gray-300 whitespace-pre-wrap">{c.body}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-semibold text-[#172b4d]">{c.author}</span>
+                      <span className="text-xs text-[#5e6c84]">{c.created_at}</span>
+                    </div>
+                    <div className="bg-white rounded-lg border border-[#dfe1e6] px-3 py-2">
+                      <p className="text-sm text-[#172b4d] whitespace-pre-wrap">{c.body}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm placeholder-gray-600 focus:outline-none focus:border-gray-600"
-                placeholder="Add a comment..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
-              />
-              <button onClick={handleAddComment} className="text-sm text-blue-400 hover:text-blue-300 px-2">Send</button>
-            </div>
           </div>
 
-          {/* Delete */}
-          <div className="pt-2 border-t border-gray-800">
-            <button onClick={handleDelete} className="text-xs text-red-400 hover:text-red-300">Delete card</button>
+          {/* Actions */}
+          <div className="pt-3 border-t border-[#dfe1e6]">
+            <button
+              onClick={handleDelete}
+              className="text-sm text-[#5e6c84] hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded transition-colors"
+            >
+              Delete card
+            </button>
           </div>
         </div>
       </div>

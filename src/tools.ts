@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import db from "./db.js";
+import { broadcast } from "./events.js";
 
 function resolveColumn(opts: { column_id?: number; column_name?: string; board_id?: number }) {
   if (opts.column_id) {
@@ -24,7 +25,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
 
   server.tool(
     "get_board",
-    "Get the current project board with all columns and cards",
+    "Get the project board with all columns and cards. Call this first to see the current state of work. Cards represent tasks/issues; columns represent workflow stages (e.g. Backlog → To Do → In Progress → Review → Done).",
     { board_id: z.number().optional().describe("Board ID (optional if project is bound)") },
     async ({ board_id }) => {
       const id = getBoardId(board_id);
@@ -53,7 +54,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
     }
   );
 
-  server.tool("list_boards", "List all kanban boards", {}, async () => {
+  server.tool("list_boards", "List all kanban boards. Each board is scoped to a project directory.", {}, async () => {
     const boards = db.prepare("SELECT * FROM boards ORDER BY created_at DESC").all();
     return { content: [{ type: "text", text: JSON.stringify(boards, null, 2) }] };
   });
@@ -62,7 +63,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
 
   server.tool(
     "create_card",
-    "Create a new card/issue. Use column_name (e.g. 'To Do', 'Backlog') or column_id.",
+    "Create a new task/issue card. Place it in the appropriate column by name (e.g. 'Backlog' for new work, 'To Do' for planned work). Only create cards for genuine tasks, not for notes.",
     {
       title: z.string().describe("Card title"),
       description: z.string().optional().describe("Card description (markdown)"),
@@ -85,13 +86,14 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
         .prepare("INSERT INTO cards (column_id, title, description, position, labels) VALUES (?, ?, ?, ?, ?)")
         .run(col.id, title, description, position, JSON.stringify(labels));
       const card = db.prepare("SELECT * FROM cards WHERE id = ?").get(info.lastInsertRowid);
+      broadcast("board-updated");
       return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
     }
   );
 
   server.tool(
     "update_card",
-    "Update a card's title, description, or labels",
+    "Update a card's title, description, or labels. Use this to add details, refine scope, or tag cards.",
     {
       card_id: z.number().describe("Card ID"),
       title: z.string().optional().describe("New title"),
@@ -114,13 +116,14 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
         db.prepare(`UPDATE cards SET ${updates.join(", ")} WHERE id = ?`).run(...values);
       }
       const updated = db.prepare("SELECT * FROM cards WHERE id = ?").get(card_id);
+      broadcast("board-updated");
       return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
     }
   );
 
   server.tool(
     "move_card",
-    "Move a card to a different column. Use column_name (e.g. 'Done') or column_id.",
+    "Move a card to a different column to update its workflow status. Use column_name (e.g. 'In Progress', 'Done'). Workflow: pick a card → move to 'In Progress' → do the work → move to 'Done' when complete. Only keep ONE card in 'In Progress' at a time.",
     {
       card_id: z.number().describe("Card ID"),
       column_name: z.string().optional().describe("Target column name (e.g. 'In Progress', 'Done')"),
@@ -169,13 +172,14 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
       })();
 
       const updated = db.prepare("SELECT * FROM cards WHERE id = ?").get(card_id);
+      broadcast("board-updated");
       return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
     }
   );
 
   server.tool(
     "get_card",
-    "Get a card with its comments",
+    "Get a card with all its comments and current column. Use this to understand task details and conversation history before starting work.",
     { card_id: z.number().describe("Card ID") },
     async ({ card_id }) => {
       const card = db.prepare("SELECT * FROM cards WHERE id = ?").get(card_id) as Record<string, unknown> | undefined;
@@ -188,7 +192,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
 
   server.tool(
     "search_cards",
-    "Search cards by title or description within the current project",
+    "Search cards by title or description. Use to find related tasks or check for duplicates before creating new cards.",
     {
       query: z.string().describe("Search query"),
       board_id: z.number().optional().describe("Board ID (optional if project is bound)"),
@@ -227,6 +231,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
         db.prepare("UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?")
           .run(card.column_id, card.position);
       })();
+      broadcast("board-updated");
       return { content: [{ type: "text", text: "Card deleted" }] };
     }
   );
@@ -235,7 +240,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
 
   server.tool(
     "add_comment",
-    "Add a comment to a card",
+    "Add a comment to a card. Use comments to: ask clarifying questions about unclear tasks, log progress updates, explain what was done, or note blockers. Always comment before starting work and after completing it.",
     {
       card_id: z.number().describe("Card ID"),
       body: z.string().describe("Comment text (markdown)"),
@@ -248,13 +253,14 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
         .prepare("INSERT INTO comments (card_id, body, author) VALUES (?, ?, ?)")
         .run(card_id, body, author);
       const comment = db.prepare("SELECT * FROM comments WHERE id = ?").get(info.lastInsertRowid);
+      broadcast("board-updated");
       return { content: [{ type: "text", text: JSON.stringify(comment, null, 2) }] };
     }
   );
 
   server.tool(
     "list_comments",
-    "List all comments on a card",
+    "List all comments on a card. Read comments to understand discussion history and any clarifications before working on a task.",
     { card_id: z.number().describe("Card ID") },
     async ({ card_id }) => {
       const comments = db
@@ -268,7 +274,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
 
   server.tool(
     "create_document",
-    "Store a document (documentation, notes, specs) on the project board",
+    "Create a document for storing documentation, notes, specs, or research findings. Documents persist across sessions and are visible in the web UI Docs page.",
     {
       title: z.string().describe("Document title"),
       content: z.string().describe("Document content (markdown)"),
@@ -282,13 +288,14 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
         .prepare("INSERT INTO documents (board_id, title, content, author) VALUES (?, ?, ?, ?)")
         .run(id, title, content, author);
       const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(info.lastInsertRowid);
+      broadcast("board-updated");
       return { content: [{ type: "text", text: JSON.stringify(doc, null, 2) }] };
     }
   );
 
   server.tool(
     "update_document",
-    "Update a document's title or content",
+    "Update a document's title or content. Use to keep documentation current as the project evolves.",
     {
       document_id: z.number().describe("Document ID"),
       title: z.string().optional().describe("New title"),
@@ -309,13 +316,14 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
         db.prepare(`UPDATE documents SET ${updates.join(", ")} WHERE id = ?`).run(...values);
       }
       const updated = db.prepare("SELECT * FROM documents WHERE id = ?").get(document_id);
+      broadcast("board-updated");
       return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
     }
   );
 
   server.tool(
     "list_documents",
-    "List all documents for the current project",
+    "List all documents for the project board. Returns titles, authors, and timestamps.",
     { board_id: z.number().optional().describe("Board ID (optional if project is bound)") },
     async ({ board_id }) => {
       const id = getBoardId(board_id);
@@ -340,7 +348,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
 
   server.tool(
     "search_documents",
-    "Search documents by title or content",
+    "Search documents by title or content. Use to find existing documentation before creating new docs.",
     {
       query: z.string().describe("Search query"),
       board_id: z.number().optional().describe("Board ID (optional if project is bound)"),
@@ -365,7 +373,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
 
   server.tool(
     "create_column",
-    "Add a new column to the project board",
+    "Add a new workflow column to the board. Default columns are: Backlog, To Do, In Progress, Review, Done. Only add columns if a new workflow stage is needed.",
     {
       name: z.string().describe("Column name"),
       board_id: z.number().optional().describe("Board ID (optional if project is bound)"),
@@ -381,6 +389,7 @@ export function registerTools(server: McpServer, projectBoardId?: number) {
         .prepare("INSERT INTO columns (board_id, name, position) VALUES (?, ?, ?)")
         .run(id, name, position);
       const col = db.prepare("SELECT * FROM columns WHERE id = ?").get(info.lastInsertRowid);
+      broadcast("board-updated");
       return { content: [{ type: "text", text: JSON.stringify(col, null, 2) }] };
     }
   );

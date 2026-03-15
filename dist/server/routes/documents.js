@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../db.js";
+import { broadcast } from "../events.js";
 export const documentsRouter = Router();
 documentsRouter.get("/", (req, res) => {
     const { board_id } = req.query;
@@ -10,6 +11,7 @@ documentsRouter.post("/", (req, res) => {
     const { board_id, title, content = "", author = "user" } = req.body;
     const info = db.prepare("INSERT INTO documents (board_id, title, content, author) VALUES (?, ?, ?, ?)").run(board_id, title, content, author);
     const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(info.lastInsertRowid);
+    broadcast("board-updated");
     res.status(201).json(doc);
 });
 documentsRouter.get("/:id", (req, res) => {
@@ -38,9 +40,11 @@ documentsRouter.patch("/:id", (req, res) => {
         db.prepare(`UPDATE documents SET ${updates.join(", ")} WHERE id = ?`).run(...values);
     }
     const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(req.params.id);
+    broadcast("board-updated");
     res.json(doc);
 });
 documentsRouter.delete("/:id", (req, res) => {
     db.prepare("DELETE FROM documents WHERE id = ?").run(req.params.id);
+    broadcast("board-updated");
     res.json({ ok: true });
 });

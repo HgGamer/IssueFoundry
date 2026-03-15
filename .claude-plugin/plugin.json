@@ -8,26 +8,28 @@
   "repository": "https://github.com/HgGamer/IssueFoundry",
   "license": "MIT",
   "keywords": ["kanban", "issues", "project-management", "mcp"],
-  "hooks": [
-    {
-      "event": "SessionStart",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh",
-          "timeout": 30000
-        }
-      ]
-    },
-    {
-      "event": "SessionStop",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/teardown.sh",
-          "timeout": 5000
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh",
+            "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/teardown.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
 }

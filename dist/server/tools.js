@@ -1,5 +1,6 @@
 import { z } from "zod";
 import db from "./db.js";
+import { broadcast } from "./events.js";
 function resolveColumn(opts) {
     if (opts.column_id) {
         return db.prepare("SELECT * FROM columns WHERE id = ?").get(opts.column_id);
@@ -14,7 +15,7 @@ export function registerTools(server, projectBoardId) {
         return explicit ?? projectBoardId;
     }
     // ── Board context ──
-    server.tool("get_board", "Get the current project board with all columns and cards", { board_id: z.number().optional().describe("Board ID (optional if project is bound)") }, async ({ board_id }) => {
+    server.tool("get_board", "Get the project board with all columns and cards. Call this first to see the current state of work. Cards represent tasks/issues; columns represent workflow stages (e.g. Backlog → To Do → In Progress → Review → Done).", { board_id: z.number().optional().describe("Board ID (optional if project is bound)") }, async ({ board_id }) => {
         const id = getBoardId(board_id);
         if (!id)
             return { isError: true, content: [{ type: "text", text: "No project bound and no board_id provided" }] };
@@ -36,12 +37,12 @@ export function registerTools(server, projectBoardId) {
         };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     });
-    server.tool("list_boards", "List all kanban boards", {}, async () => {
+    server.tool("list_boards", "List all kanban boards. Each board is scoped to a project directory.", {}, async () => {
         const boards = db.prepare("SELECT * FROM boards ORDER BY created_at DESC").all();
         return { content: [{ type: "text", text: JSON.stringify(boards, null, 2) }] };
     });
     // ── Cards (Issues) ──
-    server.tool("create_card", "Create a new card/issue. Use column_name (e.g. 'To Do', 'Backlog') or column_id.", {
+    server.tool("create_card", "Create a new task/issue card. Place it in the appropriate column by name (e.g. 'Backlog' for new work, 'To Do' for planned work). Only create cards for genuine tasks, not for notes.", {
         title: z.string().describe("Card title"),
         description: z.string().optional().describe("Card description (markdown)"),
         column_name: z.string().optional().describe("Column name (e.g. 'To Do', 'In Progress')"),
@@ -61,9 +62,10 @@ export function registerTools(server, projectBoardId) {
             .prepare("INSERT INTO cards (column_id, title, description, position, labels) VALUES (?, ?, ?, ?, ?)")
             .run(col.id, title, description, position, JSON.stringify(labels));
         const card = db.prepare("SELECT * FROM cards WHERE id = ?").get(info.lastInsertRowid);
+        broadcast("board-updated");
         return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
     });
-    server.tool("update_card", "Update a card's title, description, or labels", {
+    server.tool("update_card", "Update a card's title, description, or labels. Use this to add details, refine scope, or tag cards.", {
         card_id: z.number().describe("Card ID"),
         title: z.string().optional().describe("New title"),
         description: z.string().optional().describe("New description"),
@@ -92,9 +94,10 @@ export function registerTools(server, projectBoardId) {
             db.prepare(`UPDATE cards SET ${updates.join(", ")} WHERE id = ?`).run(...values);
         }
         const updated = db.prepare("SELECT * FROM cards WHERE id = ?").get(card_id);
+        broadcast("board-updated");
         return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
     });
-    server.tool("move_card", "Move a card to a different column. Use column_name (e.g. 'Done') or column_id.", {
+    server.tool("move_card", "Move a card to a different column to update its workflow status. Use column_name (e.g. 'In Progress', 'Done'). Workflow: pick a card → move to 'In Progress' → do the work → move to 'Done' when complete. Only keep ONE card in 'In Progress' at a time.", {
         card_id: z.number().describe("Card ID"),
         column_name: z.string().optional().describe("Target column name (e.g. 'In Progress', 'Done')"),
         column_id: z.number().optional().describe("Target column ID (alternative to column_name)"),
@@ -139,9 +142,10 @@ export function registerTools(server, projectBoardId) {
                 .run(targetColId, targetPos, card_id);
         })();
         const updated = db.prepare("SELECT * FROM cards WHERE id = ?").get(card_id);
+        broadcast("board-updated");
         return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
     });
-    server.tool("get_card", "Get a card with its comments", { card_id: z.number().describe("Card ID") }, async ({ card_id }) => {
+    server.tool("get_card", "Get a card with all its comments and current column. Use this to understand task details and conversation history before starting work.", { card_id: z.number().describe("Card ID") }, async ({ card_id }) => {
         const card = db.prepare("SELECT * FROM cards WHERE id = ?").get(card_id);
         if (!card)
             return { isError: true, content: [{ type: "text", text: "Card not found" }] };
@@ -149,7 +153,7 @@ export function registerTools(server, projectBoardId) {
         const col = db.prepare("SELECT name FROM columns WHERE id = ?").get(card.column_id);
         return { content: [{ type: "text", text: JSON.stringify({ ...card, column_name: col?.name, comments }, null, 2) }] };
     });
-    server.tool("search_cards", "Search cards by title or description within the current project", {
+    server.tool("search_cards", "Search cards by title or description. Use to find related tasks or check for duplicates before creating new cards.", {
         query: z.string().describe("Search query"),
         board_id: z.number().optional().describe("Board ID (optional if project is bound)"),
     }, async ({ query, board_id }) => {
@@ -180,10 +184,11 @@ export function registerTools(server, projectBoardId) {
             db.prepare("UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?")
                 .run(card.column_id, card.position);
         })();
+        broadcast("board-updated");
         return { content: [{ type: "text", text: "Card deleted" }] };
     });
     // ── Comments ──
-    server.tool("add_comment", "Add a comment to a card", {
+    server.tool("add_comment", "Add a comment to a card. Use comments to: ask clarifying questions about unclear tasks, log progress updates, explain what was done, or note blockers. Always comment before starting work and after completing it.", {
         card_id: z.number().describe("Card ID"),
         body: z.string().describe("Comment text (markdown)"),
         author: z.string().optional().describe("Author name (defaults to 'agent')"),
@@ -195,16 +200,17 @@ export function registerTools(server, projectBoardId) {
             .prepare("INSERT INTO comments (card_id, body, author) VALUES (?, ?, ?)")
             .run(card_id, body, author);
         const comment = db.prepare("SELECT * FROM comments WHERE id = ?").get(info.lastInsertRowid);
+        broadcast("board-updated");
         return { content: [{ type: "text", text: JSON.stringify(comment, null, 2) }] };
     });
-    server.tool("list_comments", "List all comments on a card", { card_id: z.number().describe("Card ID") }, async ({ card_id }) => {
+    server.tool("list_comments", "List all comments on a card. Read comments to understand discussion history and any clarifications before working on a task.", { card_id: z.number().describe("Card ID") }, async ({ card_id }) => {
         const comments = db
             .prepare("SELECT * FROM comments WHERE card_id = ? ORDER BY created_at ASC")
             .all(card_id);
         return { content: [{ type: "text", text: JSON.stringify(comments, null, 2) }] };
     });
     // ── Documents ──
-    server.tool("create_document", "Store a document (documentation, notes, specs) on the project board", {
+    server.tool("create_document", "Create a document for storing documentation, notes, specs, or research findings. Documents persist across sessions and are visible in the web UI Docs page.", {
         title: z.string().describe("Document title"),
         content: z.string().describe("Document content (markdown)"),
         author: z.string().optional().describe("Author name (defaults to 'agent')"),
@@ -217,9 +223,10 @@ export function registerTools(server, projectBoardId) {
             .prepare("INSERT INTO documents (board_id, title, content, author) VALUES (?, ?, ?, ?)")
             .run(id, title, content, author);
         const doc = db.prepare("SELECT * FROM documents WHERE id = ?").get(info.lastInsertRowid);
+        broadcast("board-updated");
         return { content: [{ type: "text", text: JSON.stringify(doc, null, 2) }] };
     });
-    server.tool("update_document", "Update a document's title or content", {
+    server.tool("update_document", "Update a document's title or content. Use to keep documentation current as the project evolves.", {
         document_id: z.number().describe("Document ID"),
         title: z.string().optional().describe("New title"),
         content: z.string().optional().describe("New content"),
@@ -243,9 +250,10 @@ export function registerTools(server, projectBoardId) {
             db.prepare(`UPDATE documents SET ${updates.join(", ")} WHERE id = ?`).run(...values);
         }
         const updated = db.prepare("SELECT * FROM documents WHERE id = ?").get(document_id);
+        broadcast("board-updated");
         return { content: [{ type: "text", text: JSON.stringify(updated, null, 2) }] };
     });
-    server.tool("list_documents", "List all documents for the current project", { board_id: z.number().optional().describe("Board ID (optional if project is bound)") }, async ({ board_id }) => {
+    server.tool("list_documents", "List all documents for the project board. Returns titles, authors, and timestamps.", { board_id: z.number().optional().describe("Board ID (optional if project is bound)") }, async ({ board_id }) => {
         const id = getBoardId(board_id);
         if (!id)
             return { isError: true, content: [{ type: "text", text: "No project bound and no board_id provided" }] };
@@ -260,7 +268,7 @@ export function registerTools(server, projectBoardId) {
             return { isError: true, content: [{ type: "text", text: "Document not found" }] };
         return { content: [{ type: "text", text: JSON.stringify(doc, null, 2) }] };
     });
-    server.tool("search_documents", "Search documents by title or content", {
+    server.tool("search_documents", "Search documents by title or content. Use to find existing documentation before creating new docs.", {
         query: z.string().describe("Search query"),
         board_id: z.number().optional().describe("Board ID (optional if project is bound)"),
     }, async ({ query, board_id }) => {
@@ -279,7 +287,7 @@ export function registerTools(server, projectBoardId) {
         return { content: [{ type: "text", text: JSON.stringify(docs, null, 2) }] };
     });
     // ── Columns ──
-    server.tool("create_column", "Add a new column to the project board", {
+    server.tool("create_column", "Add a new workflow column to the board. Default columns are: Backlog, To Do, In Progress, Review, Done. Only add columns if a new workflow stage is needed.", {
         name: z.string().describe("Column name"),
         board_id: z.number().optional().describe("Board ID (optional if project is bound)"),
     }, async ({ name, board_id }) => {
@@ -294,6 +302,7 @@ export function registerTools(server, projectBoardId) {
             .prepare("INSERT INTO columns (board_id, name, position) VALUES (?, ?, ?)")
             .run(id, name, position);
         const col = db.prepare("SELECT * FROM columns WHERE id = ?").get(info.lastInsertRowid);
+        broadcast("board-updated");
         return { content: [{ type: "text", text: JSON.stringify(col, null, 2) }] };
     });
 }

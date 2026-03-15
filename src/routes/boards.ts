@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db, { getOrCreateProjectBoard } from "../db.js";
+import { broadcast } from "../events.js";
 
 export const boardsRouter = Router();
 
@@ -20,6 +21,7 @@ boardsRouter.post("/", (req, res) => {
   const insertCol = db.prepare("INSERT INTO columns (board_id, name, position) VALUES (?, ?, ?)");
   DEFAULT_COLUMNS.forEach((col, i) => insertCol.run(info.lastInsertRowid, col, i));
   const board = db.prepare("SELECT * FROM boards WHERE id = ?").get(info.lastInsertRowid);
+  broadcast("board-updated");
   res.status(201).json(board);
 });
 
@@ -47,5 +49,6 @@ boardsRouter.get("/:id/full", (req, res) => {
 
 boardsRouter.delete("/:id", (req, res) => {
   db.prepare("DELETE FROM boards WHERE id = ?").run(req.params.id);
+  broadcast("board-updated");
   res.json({ ok: true });
 });

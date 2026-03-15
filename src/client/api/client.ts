@@ -81,4 +81,7 @@ export const api = {
   createDocument: (board_id: number, title: string, content: string) =>
     json<Document>(`${API}/documents`, { method: "POST", body: JSON.stringify({ board_id, title, content }) }),
   getDocument: (id: number) => json<Document>(`${API}/documents/${id}`),
+  updateDocument: (id: number, data: Partial<Pick<Document, "title" | "content">>) =>
+    json<Document>(`${API}/documents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteDocument: (id: number) => json<void>(`${API}/documents/${id}`, { method: "DELETE" }),
 };
