@@ -1,0 +1,19 @@
+{
+  "name": "issue-foundry-marketplace",
+  "owner": {
+    "name": "HgGamer"
+  },
+  "metadata": {
+    "description": "Kanban board MCP server for AI agent project management"
+  },
+  "plugins": [
+    {
+      "name": "issue-foundry",
+      "source": "./",
+      "description": "Kanban board for AI agents — manage issues, comments, and documents scoped to your project",
+      "version": "2.0.0",
+      "category": "productivity",
+      "tags": ["kanban", "issues", "project-management", "mcp"]
+    }
+  ]
+}

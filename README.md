@@ -2,9 +2,22 @@
 
 MCP server plugin for managing kanban boards, issues, and documents — scoped to the project the agent is working on.
 
-## Install as Claude Code Plugin
+## Installation
 
-Add to your project's `.mcp.json`:
+### Method 1: Claude Code Plugin Marketplace (Recommended)
+
+Add the marketplace and install:
+
+```
+/plugin marketplace add HgGamer/IssueFoundry
+/plugin install issue-foundry@issue-foundry-marketplace
+```
+
+The plugin auto-starts on every Claude Code session. Dependencies install automatically on first use.
+
+### Method 2: Direct MCP Server
+
+Add as an MCP server in your project's `.mcp.json`:
 
 ```json
 {
@@ -17,38 +30,52 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-The board auto-creates based on the working directory. To bind to a specific project:
+Or add via CLI:
+
+```bash
+claude mcp add --transport stdio issue-foundry -- node /path/to/IssueFoundry/dist/index.js
+```
+
+### Method 3: Global User Config
+
+Add to `~/.claude/settings.json` to make it available in all projects:
 
 ```json
 {
   "mcpServers": {
     "issue-foundry": {
       "command": "node",
-      "args": ["/path/to/IssueFoundry/dist/index.js", "--project", "/path/to/your-project"]
+      "args": ["/path/to/IssueFoundry/dist/index.js"]
     }
   }
 }
 ```
 
-## Development
+### Method 4: Team Distribution
 
-```bash
-npm install
-npm run build
-npm run dev   # runs with tsx (no build needed)
+Add to your project's `.claude/settings.json` so all team members get it:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "issue-foundry-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "HgGamer/IssueFoundry"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "issue-foundry@issue-foundry-marketplace": true
+  }
+}
 ```
 
-## How Agents Use It
+## How It Works
 
-Agents interact using natural column names — no IDs needed:
+Each project gets its own board automatically (based on working directory). Default columns: **Backlog**, **To Do**, **In Progress**, **Review**, **Done**.
 
-```
-create_card(title: "Fix login bug", column_name: "To Do", labels: ["bug"])
-move_card(card_id: 1, column_name: "In Progress")
-add_comment(card_id: 1, body: "Found the root cause")
-move_card(card_id: 1, column_name: "Done")
-create_document(title: "Auth Architecture", content: "# Auth Flow\n...")
-```
+All data is stored at `~/.issue-foundry/kanban.db`.
 
 ## MCP Tools
 
@@ -71,9 +98,23 @@ create_document(title: "Auth Architecture", content: "# Auth Flow\n...")
 | `search_documents` | Search documents |
 | `create_column` | Add a new column |
 
-## Storage
+## Example Usage
 
-Database is stored at `~/.issue-foundry/kanban.db` — shared across all projects, with each project getting its own board. Default columns: Backlog, To Do, In Progress, Review, Done.
+```
+create_card(title: "Fix login bug", column_name: "To Do", labels: ["bug"])
+move_card(card_id: 1, column_name: "In Progress")
+add_comment(card_id: 1, body: "Found the root cause")
+move_card(card_id: 1, column_name: "Done")
+create_document(title: "Auth Architecture", content: "# Auth Flow\n...")
+```
+
+## Development
+
+```bash
+npm install
+npm run build
+npm run dev   # runs with tsx (no build step needed)
+```
 
 ## Tech Stack
 
