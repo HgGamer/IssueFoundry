@@ -1,6 +1,6 @@
 {
   "name": "issue-foundry",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "type": "module",
   "description": "MCP server plugin for managing kanban boards, issues, and documents",
   "bin": {
