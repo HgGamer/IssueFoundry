@@ -10,7 +10,7 @@ Add the marketplace and install:
 
 ```
 /plugin marketplace add HgGamer/IssueFoundry
-/plugin install issue-foundry@issue-foundry-marketplace
+/plugin install issue-foundry@HgGamer
 ```
 
 The plugin auto-starts on every Claude Code session. Dependencies install automatically on first use.
@@ -24,7 +24,7 @@ Add as an MCP server in your project's `.mcp.json`:
   "mcpServers": {
     "issue-foundry": {
       "command": "node",
-      "args": ["/path/to/IssueFoundry/dist/index.js"]
+      "args": ["/path/to/IssueFoundry/dist/server/index.js"]
     }
   }
 }
@@ -33,7 +33,7 @@ Add as an MCP server in your project's `.mcp.json`:
 Or add via CLI:
 
 ```bash
-claude mcp add --transport stdio issue-foundry -- node /path/to/IssueFoundry/dist/index.js
+claude mcp add --transport stdio issue-foundry -- node /path/to/IssueFoundry/dist/server/index.js
 ```
 
 ### Method 3: Global User Config
@@ -45,7 +45,7 @@ Add to `~/.claude/settings.json` to make it available in all projects:
   "mcpServers": {
     "issue-foundry": {
       "command": "node",
-      "args": ["/path/to/IssueFoundry/dist/index.js"]
+      "args": ["/path/to/IssueFoundry/dist/server/index.js"]
     }
   }
 }
@@ -58,7 +58,7 @@ Add to your project's `.claude/settings.json` so all team members get it:
 ```json
 {
   "extraKnownMarketplaces": {
-    "issue-foundry-marketplace": {
+    "HgGamer": {
       "source": {
         "source": "github",
         "repo": "HgGamer/IssueFoundry"
@@ -66,10 +66,21 @@ Add to your project's `.claude/settings.json` so all team members get it:
     }
   },
   "enabledPlugins": {
-    "issue-foundry@issue-foundry-marketplace": true
+    "issue-foundry@HgGamer": true
   }
 }
 ```
+
+## Web UI
+
+Launch the web dashboard to view and manage your boards visually:
+
+```bash
+npm run dev          # development (hot reload)
+npm run build && npm start  # production
+```
+
+Open http://localhost:3769 — drag-and-drop cards, manage comments, browse documents. The web UI and MCP server share the same database, so changes from agents appear in real-time.
 
 ## How It Works
 
@@ -112,12 +123,15 @@ create_document(title: "Auth Architecture", content: "# Auth Flow\n...")
 
 ```bash
 npm install
-npm run build
-npm run dev   # runs with tsx (no build step needed)
+npm run build        # build client + server
+npm run dev          # web UI with hot reload
+npm run mcp:dev      # MCP server (dev mode)
 ```
 
 ## Tech Stack
 
-- MCP SDK (stdio transport)
-- better-sqlite3 (WAL mode)
-- TypeScript
+- **MCP Plugin:** MCP SDK (stdio transport)
+- **Web UI:** React + @hello-pangea/dnd + Tailwind CSS v4
+- **Backend:** Express + Vite
+- **Database:** better-sqlite3 (WAL mode)
+- **Dev:** TypeScript + tsx
