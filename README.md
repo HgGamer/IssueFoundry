@@ -9,7 +9,8 @@ IssueFoundry runs as a [Claude Code plugin](https://docs.anthropic.com/en/docs/c
 ### Install as a Claude Code Plugin (Recommended)
 
 ```
-/install HgGamer/issue-foundry
+/plugin marketplace add HgGamer/IssueFoundry
+/plugin install issue-foundry@HgGamer
 ```
 
 That's it. The plugin auto-starts a local web server on every session and stops it when you're done.
