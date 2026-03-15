@@ -10,5 +10,5 @@ fi
 # Start the web UI if not already running
 if ! lsof -iTCP:37696 -sTCP:LISTEN >/dev/null 2>&1; then
   cd "${PLUGIN_ROOT}" && nohup node dist/server/server.js > /tmp/issuefoundry.log 2>&1 &
-  echo "IssueFoundry web UI starting at http://localhost:37696"
 fi
+echo "IssueFoundry running on http://localhost:37696"

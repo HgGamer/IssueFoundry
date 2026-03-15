@@ -1,6 +1,6 @@
 {
   "name": "issue-foundry",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Kanban board for AI agents — manage issues, comments, and documents scoped to your project",
   "author": {
     "name": "HgGamer"
@@ -16,6 +16,16 @@
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh",
           "timeout": 30000
+        }
+      ]
+    },
+    {
+      "event": "SessionStop",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/scripts/teardown.sh",
+          "timeout": 5000
         }
       ]
     }

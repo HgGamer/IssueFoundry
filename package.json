@@ -1,6 +1,6 @@
 {
   "name": "issue-foundry",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "type": "module",
   "description": "MCP server plugin for managing kanban boards, issues, and documents",
   "bin": {
@@ -23,7 +23,6 @@
     "express": "^5.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "vite-express": "^0.19.0",
     "zod": "^3.24.4"
   },
   "devDependencies": {
